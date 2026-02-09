@@ -241,10 +241,10 @@
   const DX = [0, 0, -1, 1];
   const DY = [-1, 1, 0, 0];
 
-  // Tile types
-  const EMPTY = 0;
+  // Tile types (matches maze template encoding: 0=dot, 1=wall, 2=empty, 3=power)
+  const DOT = 0;
   const WALL = 1;
-  const DOT = 2;
+  const EMPTY = 2;
   const POWER = 3;
   const GHOST_HOME = 4;
   const TUNNEL = 5;
@@ -380,7 +380,8 @@
 
   // ===== Ghosts =====
   function createGhost(i) {
-    const homeX = 8 + i;
+    const homePositions = [8, 9, 10, 9];
+    const homeX = homePositions[i];
     const homeY = 9;
     return {
       x: homeX, y: homeY,
@@ -715,7 +716,8 @@
       // Reset positions
       state.cookie = createCookie();
       state.ghosts.forEach((g, i) => {
-        g.x = 8 + i;
+        const homePositions = [8, 9, 10, 9];
+        g.x = homePositions[i];
         g.y = 9;
         g.dir = DIR.UP;
         g.moveProgress = 0;
@@ -1106,6 +1108,9 @@
     draw();
     requestAnimationFrame(gameLoop);
   }
+
+  // Initialize level so maze/cookie/ghosts exist for drawing
+  initLevel();
 
   // Start the render loop
   draw();
