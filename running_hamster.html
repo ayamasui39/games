@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>とっとこクッキー</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+  body {
+    background: #1a1a2e;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Segoe UI', 'Hiragino Sans', sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #gameWrapper {
+    position: relative;
+    width: 800px;
+    max-width: 100vw;
+    padding: 0 4px;
+  }
+  #header {
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  #header h1 {
+    color: #ffb347;
+    font-size: 28px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    letter-spacing: 4px;
+  }
+  #hud {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 12px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+  }
+  #hud span { text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+  .stage-label { color: #7fdbca; }
+  .score-label { color: #ffb347; }
+  .lives-label { color: #ff6b6b; }
+  canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 0 30px rgba(255, 179, 71, 0.3);
+    cursor: pointer;
+    touch-action: none;
+  }
+  #message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: #fff;
+    pointer-events: none;
+    z-index: 10;
+    width: 90%;
+  }
+  #message h2 {
+    font-size: 36px;
+    margin-bottom: 12px;
+    text-shadow: 2px 2px 6px rgba(0,0,0,0.7);
+  }
+  #message p {
+    font-size: 18px;
+    opacity: 0.85;
+  }
+  #instructions {
+    text-align: center;
+    margin-top: 8px;
+    color: #aaa;
+    font-size: 13px;
+  }
+  .back-link {
+    display: inline-block;
+    margin-bottom: 6px;
+    color: #7fdbca;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: bold;
+    transition: color 0.2s;
+  }
+  .back-link:hover { color: #ffb347; }
+
+  /* iPad landscape & portrait (768px - 1024px) */
+  @media (max-width: 1024px) {
+    #header h1 { font-size: 24px; letter-spacing: 3px; }
+    #hud { font-size: 15px; padding: 4px 10px; }
+    #message h2 { font-size: 30px; }
+    #message p { font-size: 16px; }
+  }
+
+  /* Smartphones (up to 480px) */
+  @media (max-width: 480px) {
+    #gameWrapper { padding: 0 2px; }
+    #header { margin-bottom: 4px; }
+    #header h1 { font-size: 18px; letter-spacing: 2px; }
+    #hud { font-size: 12px; padding: 2px 6px; }
+    #message h2 { font-size: 22px; margin-bottom: 8px; }
+    #message p { font-size: 14px; }
+    #instructions { font-size: 11px; margin-top: 4px; }
+    canvas { border-radius: 4px; }
+  }
+
+  /* Very small phones (up to 360px) */
+  @media (max-width: 360px) {
+    #header h1 { font-size: 15px; letter-spacing: 1px; }
+    #hud { font-size: 11px; }
+    #message h2 { font-size: 18px; }
+    #message p { font-size: 12px; }
+  }
+
+  /* Landscape orientation on phones */
+  @media (max-height: 500px) and (orientation: landscape) {
+    #header { margin-bottom: 2px; }
+    #header h1 { font-size: 16px; }
+    #hud { padding: 2px 8px; font-size: 12px; }
+    #instructions { margin-top: 2px; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+<div id="gameWrapper">
+  <a href="index.html" class="back-link">&#8592; Back to Home</a>
+  <div id="header"><h1>とっとこクッキー</h1></div>
+  <div id="hud">
+    <span class="stage-label" id="stageLabel">STAGE 1</span>
+    <span class="score-label" id="scoreLabel">SCORE: 0</span>
+    <span class="lives-label" id="livesLabel"></span>
+  </div>
+  <canvas id="gameCanvas" width="800" height="400"></canvas>
+  <div id="message"><h2>とっとこクッキー</h2><p>クリックでスタート！</p></div>
+  <div id="instructions">タップ / クリック / スペースキー でジャンプ</div>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const messageEl = document.getElementById('message');
+const stageLabelEl = document.getElementById('stageLabel');
+const scoreLabelEl = document.getElementById('scoreLabel');
+const livesLabelEl = document.getElementById('livesLabel');
+
+// --- Game Constants ---
+const W = 800, H = 400;
+const GROUND_Y = 330;
+const GRAVITY = 0.7;
+const JUMP_FORCE = -14;
+const BASE_SPEED = 4;
+
+// --- Game State ---
+let state = 'title'; // title, playing, stageClear, gameOver, allClear
+let score = 0;
+let stage = 1;
+let lives = 3;
+let stageTimer = 0;
+let stageGoal = 600;       // frames to clear a stage
+let obstacleInterval = 90;  // frames between obstacles
+let speed = BASE_SPEED;
+let frameCount = 0;
+let obstacles = [];
+let particles = [];
+let cookies = [];
+let groundOffset = 0;
+let clouds = [];
+let shakeTimer = 0;
+let invincibleTimer = 0;
+
+// --- Hamster ---
+const hamster = {
+  x: 100, y: GROUND_Y, w: 40, h: 36,
+  vy: 0, onGround: true,
+  runFrame: 0, runTimer: 0,
+  jump() {
+    if (this.onGround) {
+      this.vy = JUMP_FORCE;
+      this.onGround = false;
+    }
+  },
+  update() {
+    this.vy += GRAVITY;
+    this.y += this.vy;
+    if (this.y >= GROUND_Y) {
+      this.y = GROUND_Y;
+      this.vy = 0;
+      this.onGround = true;
+    }
+    this.runTimer++;
+    if (this.runTimer > 4) { this.runTimer = 0; this.runFrame = (this.runFrame + 1) % 4; }
+  }
+};
+
+// --- Init Clouds ---
+function initClouds() {
+  clouds = [];
+  for (let i = 0; i < 5; i++) {
+    clouds.push({ x: Math.random() * W, y: 30 + Math.random() * 80, w: 60 + Math.random() * 50, speed: 0.3 + Math.random() * 0.5 });
+  }
+}
+initClouds();
+
+// --- Drawing Functions ---
+function drawSky() {
+  // Gradient sky based on stage
+  const colors = [
+    ['#87CEEB', '#e0f0ff'],  // Stage 1: Day
+    ['#ff9a56', '#ffd89b'],  // Stage 2: Sunset
+    ['#2c3e6b', '#6c5b9e'],  // Stage 3: Dusk
+    ['#0f0c29', '#302b63'],  // Stage 4: Night
+    ['#1a0033', '#4a0066'],  // Stage 5: Space
+  ];
+  const c = colors[Math.min(stage - 1, colors.length - 1)];
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, c[0]);
+  grad.addColorStop(1, c[1]);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawClouds() {
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  for (const c of clouds) {
+    ctx.beginPath();
+    ctx.ellipse(c.x, c.y, c.w / 2, 18, 0, 0, Math.PI * 2);
+    ctx.ellipse(c.x - 18, c.y + 6, c.w / 3, 14, 0, 0, Math.PI * 2);
+    ctx.ellipse(c.x + 18, c.y + 6, c.w / 3, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+    c.x -= c.speed;
+    if (c.x < -c.w) c.x = W + c.w;
+  }
+}
+
+function drawGround() {
+  // Ground
+  ctx.fillStyle = '#5a8f3c';
+  ctx.fillRect(0, GROUND_Y + 36, W, H - GROUND_Y - 36);
+
+  // Grass line
+  ctx.strokeStyle = '#6db33f';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(0, GROUND_Y + 36);
+  ctx.lineTo(W, GROUND_Y + 36);
+  ctx.stroke();
+
+  // Grass tufts
+  ctx.fillStyle = '#6db33f';
+  for (let i = 0; i < 40; i++) {
+    const gx = ((i * 22 - groundOffset * 0.5) % W + W) % W;
+    ctx.beginPath();
+    ctx.moveTo(gx, GROUND_Y + 36);
+    ctx.lineTo(gx + 3, GROUND_Y + 28);
+    ctx.lineTo(gx + 6, GROUND_Y + 36);
+    ctx.fill();
+  }
+
+  // Ground pattern
+  ctx.fillStyle = '#4a7a30';
+  for (let i = 0; i < 20; i++) {
+    const gx = ((i * 45 - groundOffset) % W + W) % W;
+    ctx.fillRect(gx, GROUND_Y + 45, 20, 3);
+  }
+}
+
+function drawHamster(x, y) {
+  const bobY = hamster.onGround ? Math.sin(hamster.runFrame * Math.PI / 2) * 2 : 0;
+  const dy = y - bobY;
+
+  ctx.save();
+  if (invincibleTimer > 0 && Math.floor(invincibleTimer / 4) % 2 === 0) {
+    ctx.globalAlpha = 0.4;
+  }
+
+  // Body (round)
+  ctx.fillStyle = '#e8a84c';
+  ctx.beginPath();
+  ctx.ellipse(x, dy, 20, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Belly
+  ctx.fillStyle = '#fce4b8';
+  ctx.beginPath();
+  ctx.ellipse(x + 4, dy + 4, 12, 11, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Head
+  ctx.fillStyle = '#e8a84c';
+  ctx.beginPath();
+  ctx.ellipse(x + 14, dy - 10, 13, 12, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Cheek
+  ctx.fillStyle = '#f5c77e';
+  ctx.beginPath();
+  ctx.ellipse(x + 20, dy - 5, 7, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Ear
+  ctx.fillStyle = '#d4894a';
+  ctx.beginPath();
+  ctx.ellipse(x + 10, dy - 22, 5, 5, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#f0b0a0';
+  ctx.beginPath();
+  ctx.ellipse(x + 10, dy - 22, 3, 3, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Eye
+  ctx.fillStyle = '#222';
+  ctx.beginPath();
+  ctx.arc(x + 20, dy - 12, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+  // Eye shine
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(x + 21, dy - 13, 1, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Nose
+  ctx.fillStyle = '#ff8888';
+  ctx.beginPath();
+  ctx.arc(x + 26, dy - 8, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Legs (animated)
+  ctx.fillStyle = '#d4894a';
+  const legPhase = hamster.runFrame;
+  // Front legs
+  const fl1 = Math.sin(legPhase * Math.PI / 2) * 5;
+  const fl2 = Math.cos(legPhase * Math.PI / 2) * 5;
+  ctx.fillRect(x + 8 + fl1, dy + 12, 4, 8);
+  ctx.fillRect(x + 2 + fl2, dy + 12, 4, 8);
+  // Back legs
+  ctx.fillRect(x - 12 - fl1, dy + 10, 5, 10);
+  ctx.fillRect(x - 18 - fl2, dy + 10, 5, 10);
+
+  // Tail
+  ctx.fillStyle = '#d4894a';
+  ctx.beginPath();
+  ctx.arc(x - 20, dy - 2, 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawObstacle(obs) {
+  if (obs.type === 'rock') {
+    // Rock obstacle
+    ctx.fillStyle = '#777';
+    ctx.beginPath();
+    ctx.moveTo(obs.x - obs.w / 2, GROUND_Y + 36);
+    ctx.lineTo(obs.x - obs.w / 2 + 5, GROUND_Y + 36 - obs.h);
+    ctx.lineTo(obs.x, GROUND_Y + 36 - obs.h - 8);
+    ctx.lineTo(obs.x + obs.w / 2 - 5, GROUND_Y + 36 - obs.h);
+    ctx.lineTo(obs.x + obs.w / 2, GROUND_Y + 36);
+    ctx.fill();
+    ctx.fillStyle = '#999';
+    ctx.beginPath();
+    ctx.moveTo(obs.x - 3, GROUND_Y + 36 - obs.h - 5);
+    ctx.lineTo(obs.x + obs.w / 4, GROUND_Y + 36 - obs.h + 2);
+    ctx.lineTo(obs.x + obs.w / 2, GROUND_Y + 36);
+    ctx.lineTo(obs.x, GROUND_Y + 36);
+    ctx.fill();
+  } else if (obs.type === 'cactus') {
+    // Cactus
+    ctx.fillStyle = '#2d8a4e';
+    ctx.fillRect(obs.x - 6, GROUND_Y + 36 - obs.h, 12, obs.h);
+    ctx.fillRect(obs.x - 18, GROUND_Y + 36 - obs.h + 10, 12, 8);
+    ctx.fillRect(obs.x + 6, GROUND_Y + 36 - obs.h + 16, 12, 8);
+    // Spines
+    ctx.strokeStyle = '#1d6a3e';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 4; i++) {
+      const sy = GROUND_Y + 36 - obs.h + 5 + i * 12;
+      ctx.beginPath(); ctx.moveTo(obs.x - 6, sy); ctx.lineTo(obs.x - 10, sy - 3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(obs.x + 6, sy); ctx.lineTo(obs.x + 10, sy - 3); ctx.stroke();
+    }
+  } else if (obs.type === 'bird') {
+    // Flying bird obstacle
+    const wingFlap = Math.sin(frameCount * 0.2) * 8;
+    ctx.fillStyle = '#444';
+    ctx.beginPath();
+    ctx.ellipse(obs.x, obs.y, 14, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Wings
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(obs.x - 8, obs.y);
+    ctx.lineTo(obs.x - 18, obs.y - wingFlap);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(obs.x + 8, obs.y);
+    ctx.lineTo(obs.x + 18, obs.y - wingFlap);
+    ctx.stroke();
+    // Eye
+    ctx.fillStyle = '#ff4444';
+    ctx.beginPath();
+    ctx.arc(obs.x - 8, obs.y - 2, 2, 0, Math.PI * 2);
+    ctx.fill();
+    // Beak
+    ctx.fillStyle = '#ff8800';
+    ctx.beginPath();
+    ctx.moveTo(obs.x - 14, obs.y);
+    ctx.lineTo(obs.x - 20, obs.y + 2);
+    ctx.lineTo(obs.x - 14, obs.y + 3);
+    ctx.fill();
+  }
+}
+
+function drawCookie(ck) {
+  ctx.save();
+  ctx.translate(ck.x, ck.y);
+  ctx.rotate(ck.rotation);
+  // Cookie body
+  ctx.fillStyle = '#d4a24c';
+  ctx.beginPath();
+  ctx.arc(0, 0, 12, 0, Math.PI * 2);
+  ctx.fill();
+  // Cookie spots
+  ctx.fillStyle = '#8B5E3C';
+  const spots = [[3, -4], [-4, 2], [2, 5], [-3, -5], [5, 1]];
+  for (const [sx, sy] of spots) {
+    ctx.beginPath();
+    ctx.arc(sx, sy, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Shine
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.beginPath();
+  ctx.arc(-3, -4, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.15;
+    p.life -= 0.02;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawProgressBar() {
+  const progress = Math.min(stageTimer / stageGoal, 1);
+  const barW = 200, barH = 12, barX = W / 2 - barW / 2, barY = 10;
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(barX, barY, barW, barH);
+  const grad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
+  grad.addColorStop(0, '#ff6b6b');
+  grad.addColorStop(0.5, '#ffd93d');
+  grad.addColorStop(1, '#6bcb77');
+  ctx.fillStyle = grad;
+  ctx.fillRect(barX, barY, barW * progress, barH);
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(barX, barY, barW, barH);
+  // Flag at end
+  ctx.fillStyle = '#fff';
+  ctx.font = '14px sans-serif';
+  ctx.fillText('🏁', barX + barW + 4, barY + 12);
+}
+
+// --- Spawn Functions ---
+function spawnObstacle() {
+  const types = ['rock', 'cactus'];
+  if (stage >= 3) types.push('bird');
+  const type = types[Math.floor(Math.random() * types.length)];
+  const obs = { x: W + 30, type };
+  if (type === 'rock') {
+    obs.w = 25 + Math.random() * 15;
+    obs.h = 25 + Math.random() * 20;
+    obs.y = GROUND_Y + 36 - obs.h;
+  } else if (type === 'cactus') {
+    obs.w = 24;
+    obs.h = 35 + Math.random() * 15;
+    obs.y = GROUND_Y + 36 - obs.h;
+  } else {
+    obs.w = 28;
+    obs.h = 16;
+    obs.y = GROUND_Y - 20 - Math.random() * 50;
+  }
+  obstacles.push(obs);
+}
+
+function spawnCookie() {
+  cookies.push({
+    x: W + 20,
+    y: GROUND_Y - 10 - Math.random() * 80,
+    rotation: 0,
+    collected: false
+  });
+}
+
+function emitParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x, y,
+      vx: (Math.random() - 0.5) * 6,
+      vy: (Math.random() - 1) * 5,
+      size: 2 + Math.random() * 3,
+      color,
+      life: 1
+    });
+  }
+}
+
+// --- Collision ---
+function checkCollision(obs) {
+  const hx = hamster.x, hy = hamster.y;
+  const hw = 18, hh = 16; // hamster hitbox (smaller than visual)
+  let ox, oy, ow, oh;
+  if (obs.type === 'bird') {
+    ox = obs.x; oy = obs.y; ow = 12; oh = 6;
+  } else {
+    ox = obs.x; oy = GROUND_Y + 36 - obs.h; ow = obs.w / 2 - 3; oh = obs.h;
+  }
+  return hx + hw > ox - ow && hx - hw < ox + ow && hy + hh > oy && hy - hh < oy + oh;
+}
+
+function checkCookieCollect(ck) {
+  const dist = Math.hypot(hamster.x - ck.x, hamster.y - ck.y);
+  return dist < 28;
+}
+
+// --- Stage Setup ---
+function setupStage() {
+  obstacles = [];
+  cookies = [];
+  stageTimer = 0;
+  speed = BASE_SPEED + (stage - 1) * 0.6;
+  stageGoal = 600 + (stage - 1) * 150;
+  obstacleInterval = Math.max(45, 90 - (stage - 1) * 8);
+  hamster.y = GROUND_Y;
+  hamster.vy = 0;
+  hamster.onGround = true;
+}
+
+// --- HUD ---
+function updateHUD() {
+  stageLabelEl.textContent = `STAGE ${stage}`;
+  scoreLabelEl.textContent = `SCORE: ${score}`;
+  livesLabelEl.textContent = '♥'.repeat(lives);
+}
+
+// --- Input ---
+function doJump() {
+  if (state === 'title') {
+    state = 'playing';
+    stage = 1;
+    score = 0;
+    lives = 3;
+    setupStage();
+    messageEl.style.display = 'none';
+    return;
+  }
+  if (state === 'gameOver' || state === 'allClear') {
+    state = 'title';
+    messageEl.innerHTML = '<h2>とっとこクッキー</h2><p>クリックでスタート！</p>';
+    messageEl.style.display = 'block';
+    return;
+  }
+  if (state === 'stageClear') return;
+  if (state === 'playing') {
+    hamster.jump();
+  }
+}
+
+canvas.addEventListener('click', doJump);
+canvas.addEventListener('touchstart', (e) => { e.preventDefault(); doJump(); }, { passive: false });
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); doJump(); }
+});
+
+// Prevent default touch behaviors that interfere with gameplay
+document.addEventListener('touchmove', (e) => { e.preventDefault(); }, { passive: false });
+
+// Handle resize/orientation changes
+function handleResize() {
+  // Force layout recalculation so CSS width:100% takes effect
+  canvas.style.maxHeight = (window.innerHeight - 80) + 'px';
+}
+window.addEventListener('resize', handleResize);
+window.addEventListener('orientationchange', () => { setTimeout(handleResize, 100); });
+handleResize();
+
+// --- Main Game Loop ---
+function update() {
+  frameCount++;
+  groundOffset += speed;
+
+  if (state === 'playing') {
+    stageTimer++;
+    hamster.update();
+    if (invincibleTimer > 0) invincibleTimer--;
+
+    // Spawn obstacles
+    if (frameCount % obstacleInterval === 0) {
+      spawnObstacle();
+    }
+    // Spawn cookies
+    if (frameCount % 70 === 0 && Math.random() < 0.4) {
+      spawnCookie();
+    }
+
+    // Update obstacles
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      obstacles[i].x -= speed;
+      if (obstacles[i].x < -50) {
+        obstacles.splice(i, 1);
+        score += 10;
+        continue;
+      }
+      // Collision
+      if (invincibleTimer <= 0 && checkCollision(obstacles[i])) {
+        lives--;
+        shakeTimer = 15;
+        invincibleTimer = 90;
+        emitParticles(hamster.x, hamster.y, '#ff4444', 15);
+        obstacles.splice(i, 1);
+        if (lives <= 0) {
+          state = 'gameOver';
+          messageEl.innerHTML = '<h2>ゲームオーバー</h2><p>スコア: ' + score + '<br>クリックでタイトルへ</p>';
+          messageEl.style.display = 'block';
+        }
+      }
+    }
+
+    // Update cookies
+    for (let i = cookies.length - 1; i >= 0; i--) {
+      cookies[i].x -= speed;
+      cookies[i].rotation += 0.05;
+      if (cookies[i].x < -30) { cookies.splice(i, 1); continue; }
+      if (checkCookieCollect(cookies[i])) {
+        score += 50;
+        emitParticles(cookies[i].x, cookies[i].y, '#ffd700', 10);
+        cookies.splice(i, 1);
+      }
+    }
+
+    // Stage clear check
+    if (stageTimer >= stageGoal) {
+      if (stage >= 5) {
+        state = 'allClear';
+        emitParticles(W / 2, H / 2, '#ffd700', 40);
+        emitParticles(W / 2, H / 2, '#ff6b6b', 30);
+        messageEl.innerHTML = '<h2>🎉 ゲームクリア！ 🎉</h2><p>おめでとう！スコア: ' + score + '<br>クリックでタイトルへ</p>';
+        messageEl.style.display = 'block';
+      } else {
+        state = 'stageClear';
+        score += 200;
+        emitParticles(W / 2, H / 2, '#ffd700', 25);
+        messageEl.innerHTML = '<h2>STAGE ' + stage + ' クリア！</h2><p>+200ボーナス！</p>';
+        messageEl.style.display = 'block';
+        setTimeout(() => {
+          stage++;
+          setupStage();
+          state = 'playing';
+          messageEl.style.display = 'none';
+        }, 2000);
+      }
+    }
+  }
+
+  updateHUD();
+}
+
+function draw() {
+  ctx.save();
+  // Screen shake
+  if (shakeTimer > 0) {
+    const sx = (Math.random() - 0.5) * shakeTimer;
+    const sy = (Math.random() - 0.5) * shakeTimer;
+    ctx.translate(sx, sy);
+    shakeTimer--;
+  }
+
+  drawSky();
+  drawClouds();
+  drawGround();
+
+  if (state === 'playing' || state === 'stageClear') {
+    drawProgressBar();
+  }
+
+  // Draw cookies
+  for (const ck of cookies) drawCookie(ck);
+
+  // Draw obstacles
+  for (const obs of obstacles) drawObstacle(obs);
+
+  // Draw hamster
+  if (state !== 'title') {
+    drawHamster(hamster.x, hamster.y);
+  } else {
+    // Title screen hamster animation
+    const titleBob = Math.sin(frameCount * 0.05) * 5;
+    drawHamster(W / 2 - 20, GROUND_Y + titleBob);
+  }
+
+  drawParticles();
+
+  ctx.restore();
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aya's Game Collection</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 50%, #ffecd2 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 520px;
+    background: #fff9f0;
+    border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    padding: 32px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .container::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 6px;
+    background: linear-gradient(90deg, #ff9a56, #ff6b8a, #a855f7, #3b82f6, #10b981);
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: #7c3aed;
+    margin-bottom: 8px;
+  }
+
+  .subtitle {
+    text-align: center;
+    font-size: 0.9rem;
+    color: #a78bfa;
+    margin-bottom: 28px;
+  }
+
+  .game-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .game-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 20px;
+    background: linear-gradient(135deg, #fef3c7, #fff5e0);
+    border-radius: 16px;
+    border: 2px solid #fde68a;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s ease;
+  }
+
+  .game-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    border-color: #f59e0b;
+  }
+
+  .game-card:active {
+    transform: translateY(0);
+  }
+
+  .game-icon {
+    font-size: 2.4rem;
+    flex-shrink: 0;
+  }
+
+  .game-info {
+    flex: 1;
+  }
+
+  .game-title {
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: #92400e;
+    margin-bottom: 2px;
+  }
+
+  .game-desc {
+    font-size: 0.75rem;
+    color: #b45309;
+  }
+
+  .game-arrow {
+    font-size: 1.2rem;
+    color: #d97706;
+    flex-shrink: 0;
+  }
+
+  .footer {
+    text-align: center;
+    margin-top: 28px;
+    font-size: 0.7rem;
+    color: #c4b5a0;
+  }
+
+  @media (max-width: 480px) {
+    body { padding: 12px; }
+    .container { padding: 24px 16px; }
+    h1 { font-size: 1.5rem; }
+    .game-card { padding: 14px 16px; gap: 12px; }
+    .game-icon { font-size: 2rem; }
+    .game-title { font-size: 1rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Aya's Game Collection</h1>
+  <p class="subtitle">Pick a game and have fun!</p>
+
+  <div class="game-list">
+    <a href="grow_hamster.html" class="game-card">
+      <span class="game-icon">🐹</span>
+      <div class="game-info">
+        <div class="game-title">Grow Cookie the Hamster</div>
+        <div class="game-desc">Feed, play, and watch Cookie grow!</div>
+      </div>
+      <span class="game-arrow">&#10132;</span>
+    </a>
+
+    <a href="running_hamster.html" class="game-card">
+      <span class="game-icon">🐹💨</span>
+      <div class="game-info">
+        <div class="game-title">Running Hamster</div>
+        <div class="game-desc">Jump over obstacles and collect cookies!</div>
+      </div>
+      <span class="game-arrow">&#10132;</span>
+    </a>
+  </div>
+
+  <p class="footer">Made with love by Aya</p>
+</div>
+</body>
+</html>

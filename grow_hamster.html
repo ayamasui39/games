@@ -1,0 +1,1598 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>クッキーを育てよう！ - Grow Cookie the Hamster</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow-y: auto;
+    padding: 8px;
+  }
+
+  .game-container {
+    width: 100%;
+    max-width: 480px;
+    background: #fff9f0;
+    border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .game-container::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 6px;
+    background: linear-gradient(90deg, #ff9a56, #ff6b8a, #a855f7, #3b82f6, #10b981);
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 1.4rem;
+    color: #7c3aed;
+    margin-bottom: 2px;
+  }
+
+  .subtitle {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #a78bfa;
+    margin-bottom: 10px;
+  }
+
+  /* ===== STATS BAR ===== */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 5px;
+    margin-bottom: 10px;
+  }
+
+  .stat {
+    background: #fef3c7;
+    border-radius: 10px;
+    padding: 5px 3px;
+    text-align: center;
+  }
+
+  .stat-icon { font-size: 1rem; }
+  .stat-label { font-size: 0.55rem; color: #92400e; font-weight: 700; text-transform: uppercase; }
+  .stat-bar-bg {
+    width: 100%;
+    height: 5px;
+    background: #e5e7eb;
+    border-radius: 3px;
+    margin-top: 3px;
+    overflow: hidden;
+  }
+  .stat-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+  }
+  .stat-bar-fill.food { background: linear-gradient(90deg, #f59e0b, #f97316); }
+  .stat-bar-fill.water { background: linear-gradient(90deg, #38bdf8, #3b82f6); }
+  .stat-bar-fill.energy { background: linear-gradient(90deg, #a78bfa, #7c3aed); }
+  .stat-bar-fill.happiness { background: linear-gradient(90deg, #ec4899, #f43f5e); }
+  .stat-bar-fill.size { background: linear-gradient(90deg, #10b981, #14b8a6); }
+
+  .stat-value {
+    font-size: 0.55rem;
+    color: #78716c;
+    margin-top: 1px;
+  }
+
+  @keyframes flash-warn {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .stat-bar-fill.low { animation: flash-warn 1s ease infinite; }
+
+  /* ===== LEVEL BADGE ===== */
+  .level-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .level-badge span {
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: white;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .growth-label {
+    font-size: 0.7rem;
+    color: #78716c;
+  }
+
+  /* ===== SCENE / CAGE ===== */
+  .scene {
+    width: 100%;
+    height: 280px;
+    background: linear-gradient(180deg, #e8f4fd 0%, #dbeafe 38%, #c8b898 38%, #d4c9a8 100%);
+    border-radius: 14px;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 12px;
+    border: 3px solid #b8a88a;
+  }
+
+  /* Bedding texture */
+  .scene::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 62%;
+    background: repeating-conic-gradient(#d4c9a8 0% 25%, #c9bc9e 0% 50%) 0 0 / 10px 10px;
+    opacity: 0.25;
+    pointer-events: none;
+  }
+
+  /* Cage bars at top */
+  .cage-bars {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 100%;
+    background: repeating-linear-gradient(90deg,
+      transparent 0px, transparent 32px,
+      rgba(160,160,160,0.18) 32px, rgba(160,160,160,0.18) 34px
+    );
+    z-index: 15;
+    pointer-events: none;
+  }
+  /* Top bar */
+  .cage-bars::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 5px;
+    background: linear-gradient(180deg, #aaa, #999);
+  }
+
+  /* Activity message */
+  .activity-msg {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,255,255,0.92);
+    padding: 3px 12px;
+    border-radius: 16px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #7c3aed;
+    z-index: 20;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .activity-msg.show { opacity: 1; }
+
+  /* ===== CAGE PROPS (always visible) ===== */
+
+  /* --- Sleep Hut (far left) --- */
+  .sleep-hut {
+    position: absolute;
+    left: 3%;
+    bottom: 38%;
+    width: 62px;
+    height: 42px;
+    z-index: 4;
+  }
+  /* Hut roof */
+  .hut-roof {
+    width: 62px;
+    height: 30px;
+    background: linear-gradient(180deg, #a0722c, #8B6914);
+    border-radius: 28px 28px 4px 4px;
+    position: absolute;
+    top: 0; left: 0;
+    border: 2px solid #6d4e10;
+    z-index: 2;
+  }
+  /* Wood grain on roof */
+  .hut-roof::before {
+    content: '';
+    position: absolute;
+    top: 8px; left: 8px; right: 8px;
+    height: 2px;
+    background: rgba(0,0,0,0.1);
+    border-radius: 1px;
+    box-shadow: 0 5px 0 rgba(0,0,0,0.08), 0 10px 0 rgba(0,0,0,0.06);
+  }
+  /* Hut base/walls */
+  .hut-base {
+    width: 58px;
+    height: 22px;
+    background: linear-gradient(180deg, #9B7924, #7B5914);
+    position: absolute;
+    bottom: 0;
+    left: 2px;
+    border-radius: 3px;
+    border: 2px solid #6d4e10;
+    border-top: none;
+    z-index: 1;
+  }
+  /* Door opening */
+  .hut-door {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 22px;
+    background: #1a0a00;
+    border-radius: 12px 12px 0 0;
+    z-index: 3;
+  }
+  /* Zzz emitter on top of hut (for sleeping) */
+  .hut-zzz {
+    position: absolute;
+    top: -8px;
+    right: 5px;
+    font-size: 1.1rem;
+    z-index: 12;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .hut-zzz.active {
+    animation: float-zzz 2s ease-in-out infinite;
+  }
+  .hut-zzz:nth-of-type(2) { right: 15px; animation-delay: 0.7s; }
+  @keyframes float-zzz {
+    0% { opacity: 0; transform: translateY(0) scale(0.5); }
+    50% { opacity: 1; transform: translateY(-20px) scale(1); }
+    100% { opacity: 0; transform: translateY(-40px) scale(0.7); }
+  }
+
+  /* --- Tunnel System (left-center) --- */
+  .tunnel-entrance {
+    position: absolute;
+    left: 20%;
+    bottom: 38%;
+    width: 42px;
+    height: 42px;
+    z-index: 4;
+  }
+  .tunnel-arch {
+    width: 42px;
+    height: 36px;
+    background: linear-gradient(180deg, #f97316, #ea580c);
+    border-radius: 21px 21px 3px 3px;
+    border: 3px solid #c2410c;
+    position: relative;
+  }
+  .tunnel-arch::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 24px;
+    background: #1a0800;
+    border-radius: 12px 12px 0 0;
+  }
+  /* Underground tube hint */
+  .tunnel-tube-hint {
+    position: absolute;
+    left: 25%;
+    bottom: 36%;
+    width: 100px;
+    height: 14px;
+    background: linear-gradient(180deg, rgba(200,170,130,0.5), rgba(180,150,110,0.3));
+    border-radius: 7px;
+    z-index: 1;
+    border: 1px dashed rgba(150,120,80,0.3);
+  }
+  /* Bump traveling underground */
+  .tunnel-bump {
+    position: absolute;
+    bottom: 37%;
+    left: 23%;
+    width: 28px;
+    height: 16px;
+    background: radial-gradient(ellipse at 50% 90%, #d4c9a8, #c4b098);
+    border-radius: 50% 50% 30% 30%;
+    z-index: 2;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .tunnel-bump.traveling {
+    opacity: 1;
+    animation: underground-run 2.2s ease-in-out forwards;
+  }
+  @keyframes underground-run {
+    0%   { left: 23%; opacity: 0; transform: scaleY(0.5); }
+    10%  { opacity: 1; transform: scaleY(1); }
+    30%  { left: 45%; transform: scaleY(1.2); }
+    50%  { left: 59%; transform: scaleY(0.9); }
+    70%  { left: 41%; transform: scaleY(1.1); }
+    90%  { opacity: 1; transform: scaleY(1); }
+    100% { left: 23%; opacity: 0; transform: scaleY(0.5); }
+  }
+
+  /* --- Food Bowl (center-left) --- */
+  .food-bowl {
+    position: absolute;
+    left: 44%;
+    bottom: 38%;
+    z-index: 4;
+  }
+  .bowl-body {
+    width: 42px;
+    height: 18px;
+    background: linear-gradient(180deg, #dc6050, #c04838);
+    border-radius: 6px 6px 18px 18px;
+    border: 2px solid #a03828;
+    position: relative;
+  }
+  /* Inner rim */
+  .bowl-body::before {
+    content: '';
+    position: absolute;
+    top: 2px; left: 4px; right: 4px;
+    height: 4px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 3px;
+  }
+  /* Seeds pile */
+  .bowl-seeds {
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 10px;
+    background: radial-gradient(ellipse, #f0c860, #d4a840);
+    border-radius: 50%;
+  }
+  /* Individual seeds */
+  .bowl-seeds::before, .bowl-seeds::after {
+    content: '';
+    position: absolute;
+    width: 5px; height: 7px;
+    background: linear-gradient(135deg, #e8c050, #c09830);
+    border-radius: 3px 3px 1px 1px;
+  }
+  .bowl-seeds::before { left: 4px; top: -3px; transform: rotate(-15deg); }
+  .bowl-seeds::after  { right: 4px; top: -2px; transform: rotate(10deg); }
+
+  /* --- Chewtoy (center-right) --- */
+  .chewtoy {
+    position: absolute;
+    left: 61%;
+    bottom: 39%;
+    z-index: 4;
+  }
+  .chewtoy-stick {
+    width: 36px;
+    height: 14px;
+    background: linear-gradient(180deg, #c8a858, #a08040, #c8a858);
+    border-radius: 7px;
+    border: 1px solid #8a6d30;
+    position: relative;
+    transform: rotate(-8deg);
+  }
+  /* Bite marks */
+  .chewtoy-stick::before, .chewtoy-stick::after {
+    content: '';
+    position: absolute;
+    width: 5px; height: 6px;
+    background: #7a5d20;
+    border-radius: 50%;
+    top: 4px;
+  }
+  .chewtoy-stick::before { left: 5px; }
+  .chewtoy-stick::after  { right: 5px; }
+
+  /* --- Water Bottle (hanging from top-right) --- */
+  .water-bottle {
+    position: absolute;
+    right: 19%;
+    top: 8px;
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .bottle-bracket {
+    width: 28px;
+    height: 6px;
+    background: linear-gradient(180deg, #aaa, #888);
+    border-radius: 2px;
+  }
+  .bottle-body {
+    width: 22px;
+    height: 48px;
+    background: linear-gradient(90deg,
+      rgba(140,200,255,0.35), rgba(180,220,255,0.55), rgba(140,200,255,0.35));
+    border: 2px solid rgba(100,170,240,0.5);
+    border-radius: 8px 8px 3px 3px;
+    position: relative;
+    overflow: hidden;
+  }
+  /* Water level */
+  .bottle-water {
+    position: absolute;
+    bottom: 3px; left: 3px; right: 3px;
+    height: 70%;
+    background: linear-gradient(180deg, rgba(59,130,246,0.25), rgba(59,130,246,0.45));
+    border-radius: 2px;
+    transition: height 0.5s ease;
+  }
+  /* Metal spout */
+  .bottle-spout {
+    width: 4px;
+    height: 22px;
+    background: linear-gradient(90deg, #aaa, #ccc, #aaa);
+    border-radius: 0 0 2px 2px;
+    position: relative;
+  }
+  /* Ball bearing */
+  .bottle-spout::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 6px;
+    background: radial-gradient(circle at 30% 30%, #ddd, #999);
+    border-radius: 50%;
+  }
+  /* Water drop animation */
+  .water-drop {
+    position: absolute;
+    width: 4px;
+    height: 6px;
+    background: #3b82f6;
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    z-index: 8;
+    pointer-events: none;
+    animation: drip 0.7s ease-in forwards;
+  }
+  @keyframes drip {
+    0%   { opacity: 0.8; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(30px) scale(0.5); }
+  }
+
+  /* --- Wheel Assembly (right side, always visible) --- */
+  .wheel-assembly {
+    position: absolute;
+    right: 2%;
+    bottom: 24%;
+    z-index: 3;
+  }
+  .wheel-stand {
+    position: absolute;
+    bottom: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 5px;
+    height: 50px;
+    background: linear-gradient(180deg, #888, #666);
+    border-radius: 3px;
+    z-index: 1;
+  }
+  .wheel-stand::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 6px;
+    background: linear-gradient(180deg, #777, #555);
+    border-radius: 3px;
+  }
+  .wheel-drum {
+    width: 96px;
+    height: 96px;
+    border: 4px solid #b0b0b0;
+    border-radius: 50%;
+    position: relative;
+    z-index: 2;
+    background: radial-gradient(circle, transparent 38%, rgba(180,180,180,0.12) 100%);
+  }
+  .wheel-drum .spoke {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 50%;
+    height: 2px;
+    background: #c0c0c0;
+    transform-origin: 0 50%;
+  }
+  .wheel-drum .spoke:nth-child(1) { transform: rotate(0deg); }
+  .wheel-drum .spoke:nth-child(2) { transform: rotate(45deg); }
+  .wheel-drum .spoke:nth-child(3) { transform: rotate(90deg); }
+  .wheel-drum .spoke:nth-child(4) { transform: rotate(135deg); }
+  .wheel-drum .spoke:nth-child(5) { transform: rotate(180deg); }
+  .wheel-drum .spoke:nth-child(6) { transform: rotate(225deg); }
+  .wheel-drum .spoke:nth-child(7) { transform: rotate(270deg); }
+  .wheel-drum .spoke:nth-child(8) { transform: rotate(315deg); }
+  .wheel-drum::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px; height: 8px;
+    background: #888;
+    border-radius: 50%;
+    z-index: 3;
+  }
+  .wheel-drum::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 76px; height: 76px;
+    border: 2px dashed rgba(150,150,150,0.3);
+    border-radius: 50%;
+  }
+  /* Wheel spinning state */
+  .wheel-assembly.spinning .wheel-drum {
+    animation: wheel-rotate 0.6s linear infinite;
+  }
+  @keyframes wheel-rotate {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  /* ===== HAMSTER ===== */
+  .hamster-wrapper {
+    position: absolute;
+    bottom: 22%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 5;
+    transition: left 0.6s ease, bottom 0.4s ease, transform 0.5s ease, opacity 0.4s ease;
+  }
+
+  .hamster {
+    position: relative;
+    cursor: pointer;
+  }
+
+  .hamster:hover { filter: brightness(1.05); }
+
+  .hamster-body {
+    width: 70px;
+    height: 56px;
+    background: radial-gradient(ellipse at 50% 40%, #f5c882, #e8a94e);
+    border-radius: 50% 50% 45% 45%;
+    position: relative;
+    box-shadow: inset -6px -6px 12px rgba(0,0,0,0.1), 0 3px 6px rgba(0,0,0,0.15);
+  }
+  .hamster-body::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 44px;
+    height: 30px;
+    background: radial-gradient(ellipse, #fff5e0, #f5e0b8);
+    border-radius: 50%;
+  }
+
+  .face {
+    position: absolute;
+    top: 7px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    z-index: 2;
+  }
+
+  .eyes {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 2px;
+  }
+
+  .eye {
+    width: 9px;
+    height: 9px;
+    background: #2d1b0e;
+    border-radius: 50%;
+    position: relative;
+  }
+  .eye::after {
+    content: '';
+    position: absolute;
+    top: 1px; left: 2px;
+    width: 3px; height: 3px;
+    background: white;
+    border-radius: 50%;
+  }
+  .eye.closed {
+    height: 3px;
+    border-radius: 0 0 8px 8px;
+    margin-top: 3px;
+  }
+  .eye.closed::after { display: none; }
+  .eye.happy {
+    height: 4px;
+    border-radius: 8px 8px 0 0;
+    margin-top: 3px;
+  }
+  .eye.happy::after { display: none; }
+
+  .nose {
+    width: 5px; height: 4px;
+    background: #d4837a;
+    border-radius: 50%;
+    margin: 0 auto 2px;
+  }
+
+  .mouth {
+    width: 12px; height: 6px;
+    border-bottom: 2px solid #c9816f;
+    border-radius: 0 0 50% 50%;
+    margin: 0 auto;
+  }
+  .mouth.eating {
+    animation: munch 0.25s infinite;
+  }
+  .mouth.drinking {
+    width: 6px; height: 6px;
+    border: 2px solid #c9816f;
+    border-radius: 50%;
+    animation: sip 0.5s infinite;
+  }
+  @keyframes munch {
+    0%, 100% { height: 3px; width: 8px; }
+    50% { height: 7px; width: 12px; }
+  }
+  @keyframes sip {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(0.7); }
+  }
+
+  .cheek {
+    position: absolute;
+    top: 16px;
+    width: 14px; height: 10px;
+    background: rgba(255, 150, 130, 0.4);
+    border-radius: 50%;
+    z-index: 1;
+    transition: all 0.3s;
+  }
+  .cheek.left { left: 3px; }
+  .cheek.right { right: 3px; }
+  .cheek.full {
+    width: 20px; height: 16px;
+    background: rgba(255, 150, 130, 0.65);
+  }
+
+  .ear {
+    position: absolute;
+    top: -7px;
+    width: 16px; height: 14px;
+    background: #e8a94e;
+    border-radius: 50% 50% 20% 20%;
+    z-index: 0;
+  }
+  .ear::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 50%;
+    transform: translateX(-50%);
+    width: 8px; height: 7px;
+    background: #f0c0a0;
+    border-radius: 50%;
+  }
+  .ear.left { left: 4px; transform: rotate(-15deg); }
+  .ear.right { right: 4px; transform: rotate(15deg); }
+
+  .feet {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    position: absolute;
+    bottom: -5px;
+    width: 100%;
+  }
+  .foot {
+    width: 14px; height: 8px;
+    background: #f0c080;
+    border-radius: 50%;
+  }
+
+  .tail {
+    position: absolute;
+    right: -7px;
+    bottom: 12px;
+    width: 10px; height: 7px;
+    background: #e8a94e;
+    border-radius: 50%;
+  }
+
+  .name-tag {
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(124,58,237,0.85);
+    color: white;
+    padding: 1px 8px;
+    border-radius: 8px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    white-space: nowrap;
+    z-index: 10;
+  }
+
+  /* ===== HAMSTER ACTIVITY POSITIONS ===== */
+
+  /* Walking feet animation */
+  .hamster-wrapper.walking .feet .foot {
+    animation: walk-feet 0.25s ease infinite alternate;
+  }
+  .hamster-wrapper.walking .feet .foot:nth-child(2) {
+    animation-delay: 0.125s;
+  }
+  @keyframes walk-feet {
+    0%   { transform: translateX(-3px) translateY(-1px); }
+    100% { transform: translateX(3px) translateY(0); }
+  }
+
+  /* At wheel (right side, inside wheel) */
+  .hamster-wrapper.at-wheel {
+    left: 88%;
+    bottom: 30%;
+  }
+  .hamster-wrapper.at-wheel .feet .foot {
+    animation: walk-feet 0.2s ease infinite alternate;
+  }
+  .hamster-wrapper.at-wheel .feet .foot:nth-child(2) {
+    animation-delay: 0.1s;
+  }
+
+  /* At food bowl */
+  .hamster-wrapper.at-bowl {
+    left: 50%;
+    bottom: 22%;
+    transform: translateX(-50%) scaleX(-1);
+  }
+  .hamster-wrapper.at-bowl .name-tag {
+    transform: translateX(-50%) scaleX(-1);
+  }
+  /* Tilt down to eat from bowl */
+  .hamster-wrapper.eating-from-bowl .hamster {
+    transform: rotate(8deg) translateY(4px);
+  }
+
+  /* At sleep hut */
+  .hamster-wrapper.at-hut {
+    left: 12%;
+    bottom: 22%;
+    transform: translateX(-50%) scaleX(-1);
+  }
+  .hamster-wrapper.at-hut .name-tag {
+    transform: translateX(-50%) scaleX(-1);
+  }
+  /* Entering hut */
+  .hamster-wrapper.entering-hut {
+    left: 10%;
+    bottom: 22%;
+    transform: translateX(-50%) scaleX(-1) scale(0.5);
+    opacity: 0;
+    z-index: 2;
+    transition: left 0.5s ease, bottom 0.3s ease, transform 0.5s ease, opacity 0.5s ease;
+  }
+  /* Hidden in hut */
+  .hamster-wrapper.in-hut {
+    left: 10%;
+    bottom: 22%;
+    transform: translateX(-50%) scaleX(-1) scale(0.3);
+    opacity: 0;
+    z-index: 2;
+    transition: none;
+  }
+
+  /* At chewtoy */
+  .hamster-wrapper.at-chewtoy {
+    left: 65%;
+    bottom: 22%;
+  }
+  .hamster-wrapper.chewing .hamster {
+    animation: chew-bounce 0.35s ease infinite;
+  }
+  @keyframes chew-bounce {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-4px) rotate(-3deg); }
+  }
+
+  /* At tunnel */
+  .hamster-wrapper.at-tunnel {
+    left: 26%;
+    bottom: 22%;
+    transform: translateX(-50%) scaleX(-1);
+  }
+  .hamster-wrapper.at-tunnel .name-tag {
+    transform: translateX(-50%) scaleX(-1);
+  }
+  /* Entering tunnel */
+  .hamster-wrapper.entering-tunnel {
+    left: 24%;
+    bottom: 20%;
+    transform: translateX(-50%) scaleX(-1) scale(0.35);
+    opacity: 0;
+    transition: left 0.5s ease, bottom 0.3s ease, transform 0.5s ease, opacity 0.5s ease;
+  }
+  /* In tunnel (hidden) */
+  .hamster-wrapper.in-tunnel {
+    left: 24%;
+    bottom: 20%;
+    transform: translateX(-50%) scaleX(-1) scale(0.3);
+    opacity: 0;
+    transition: none;
+  }
+  /* Exiting tunnel */
+  .hamster-wrapper.exiting-tunnel {
+    left: 26%;
+    bottom: 22%;
+    transform: translateX(-50%) scaleX(-1) scale(1);
+    opacity: 1;
+    transition: left 0.4s ease, transform 0.4s ease, opacity 0.3s ease;
+  }
+
+  /* At water bottle */
+  .hamster-wrapper.at-water {
+    left: 76%;
+    bottom: 22%;
+  }
+  /* Stretch up to drink */
+  .hamster-wrapper.drinking .hamster {
+    transform: translateY(-14px);
+  }
+  .hamster-wrapper.drinking .hamster-body {
+    transform: scaleX(0.85) scaleY(1.15);
+  }
+
+  /* Sleeping - squished (used during hut sleep) */
+  .hamster-wrapper.sleeping .hamster {
+    transform: scaleY(0.85) translateY(5px);
+  }
+
+  /* ===== PARTICLES & EFFECTS ===== */
+  .float-particle {
+    position: absolute;
+    z-index: 20;
+    font-size: 0.9rem;
+    pointer-events: none;
+    animation: float-up 1.5s ease-out forwards;
+  }
+  @keyframes float-up {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-50px) scale(0.5); }
+  }
+
+  .seed-particle {
+    position: absolute;
+    font-size: 0.7rem;
+    z-index: 8;
+    pointer-events: none;
+    opacity: 0;
+  }
+  .seed-particle.show {
+    animation: seed-bounce 0.8s ease-out forwards;
+  }
+  @keyframes seed-bounce {
+    0%   { opacity: 1; transform: translateY(0) rotate(0); }
+    50%  { transform: translateY(-15px) rotate(90deg); }
+    100% { opacity: 0; transform: translateY(5px) rotate(180deg); }
+  }
+
+  /* ===== BUTTONS ===== */
+  .actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .action-btn {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 8px 6px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.7rem;
+    transition: all 0.2s;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  }
+  .action-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+  .action-btn:active { transform: translateY(0); }
+  .action-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+  .action-btn .btn-icon { font-size: 1.1rem; }
+
+  .back-link {
+    display: inline-block;
+    margin-bottom: 10px;
+    color: #a78bfa;
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 700;
+    transition: color 0.2s;
+  }
+  .back-link:hover { color: #7c3aed; }
+
+  .btn-wheel  { background: linear-gradient(135deg, #3b82f6, #6366f1); }
+  .btn-seed   { background: linear-gradient(135deg, #f59e0b, #f97316); }
+  .btn-sleep  { background: linear-gradient(135deg, #8b5cf6, #a855f7); }
+  .btn-chew   { background: linear-gradient(135deg, #ec4899, #f43f5e); }
+  .btn-tunnel { background: linear-gradient(135deg, #10b981, #14b8a6); }
+  .btn-water  { background: linear-gradient(135deg, #38bdf8, #3b82f6); }
+
+  /* ===== LEVEL UP OVERLAY ===== */
+  .level-up-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(124, 58, 237, 0.88);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    border-radius: 24px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s;
+  }
+  .level-up-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .level-up-overlay h2 {
+    color: #fbbf24;
+    font-size: 1.8rem;
+    animation: pop 0.5s ease;
+  }
+  .level-up-overlay p {
+    color: white;
+    font-size: 0.95rem;
+    margin-top: 6px;
+  }
+  @keyframes pop {
+    0% { transform: scale(0); }
+    70% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+  }
+  /* ===== RESPONSIVE ===== */
+
+  /* Phones — container goes fluid */
+  @media (max-width: 520px) {
+    body {
+      align-items: flex-start;
+      padding: 6px;
+    }
+    .game-container {
+      padding: 14px;
+      border-radius: 16px;
+    }
+    .scene { height: 250px; }
+  }
+
+  /* Small phones (iPhone SE, etc.) */
+  @media (max-width: 400px) {
+    .game-container { padding: 10px; }
+    h1 { font-size: 1.15rem; }
+    .subtitle { font-size: 0.7rem; }
+    .level-badge span { font-size: 0.65rem; padding: 2px 8px; }
+    .growth-label { font-size: 0.6rem; }
+    .stats-bar { gap: 3px; }
+    .stat { padding: 4px 2px; border-radius: 8px; }
+    .stat-icon { font-size: 0.85rem; }
+    .stat-label { font-size: 0.48rem; }
+    .stat-value { font-size: 0.48rem; }
+    .scene { height: 220px; }
+    .actions { gap: 4px; }
+    .action-btn {
+      padding: 7px 4px;
+      font-size: 0.6rem;
+      border-radius: 10px;
+      gap: 3px;
+    }
+    .action-btn .btn-icon { font-size: 0.9rem; }
+    /* Scale down scene props to prevent overlap */
+    .sleep-hut { transform: scale(0.78); transform-origin: bottom left; }
+    .tunnel-entrance { transform: scale(0.78); transform-origin: bottom left; }
+    .food-bowl { transform: scale(0.85); transform-origin: bottom center; }
+    .chewtoy { transform: scale(0.85); transform-origin: bottom center; }
+    .water-bottle { transform: scale(0.85); transform-origin: top right; }
+    .wheel-assembly { transform: scale(0.7); transform-origin: bottom right; }
+    .activity-msg { font-size: 0.6rem; padding: 2px 8px; }
+    .name-tag { font-size: 0.5rem; }
+  }
+
+  /* Very small phones (320px) */
+  @media (max-width: 350px) {
+    .game-container { padding: 8px; }
+    h1 { font-size: 1rem; }
+    .scene { height: 190px; }
+    .stats-bar { gap: 2px; }
+    .stat-icon { font-size: 0.75rem; }
+    .stat-label { font-size: 0.42rem; }
+    .action-btn { font-size: 0.53rem; padding: 6px 3px; }
+    .action-btn .btn-icon { font-size: 0.8rem; }
+    .wheel-assembly { transform: scale(0.6); transform-origin: bottom right; }
+    .sleep-hut { transform: scale(0.68); transform-origin: bottom left; }
+    .tunnel-entrance { transform: scale(0.68); transform-origin: bottom left; }
+  }
+
+  /* iPad / Tablets */
+  @media (min-width: 768px) {
+    .game-container {
+      max-width: 540px;
+      padding: 24px;
+    }
+    .scene { height: 320px; }
+    h1 { font-size: 1.6rem; }
+    .subtitle { font-size: 0.9rem; }
+    .stat-icon { font-size: 1.15rem; }
+    .stat-label { font-size: 0.65rem; }
+    .stat-value { font-size: 0.65rem; }
+    .stat-bar-bg { height: 7px; }
+    .action-btn { padding: 10px 8px; font-size: 0.8rem; border-radius: 14px; }
+    .action-btn .btn-icon { font-size: 1.25rem; }
+    .level-badge span { font-size: 0.85rem; }
+    .growth-label { font-size: 0.8rem; }
+  }
+
+  /* iPad Pro / Large tablets */
+  @media (min-width: 1024px) {
+    .game-container {
+      max-width: 600px;
+      padding: 28px;
+    }
+    .scene { height: 360px; }
+    h1 { font-size: 1.7rem; }
+    .action-btn { padding: 12px 10px; font-size: 0.85rem; }
+  }
+</style>
+</head>
+<body>
+<div class="game-container">
+  <div class="level-up-overlay" id="levelUpOverlay">
+    <h2 id="levelUpText"></h2>
+    <p id="levelUpDesc"></p>
+  </div>
+
+  <a href="index.html" class="back-link">&#8592; Back to Home</a>
+  <h1>🐹 クッキーを育てよう！</h1>
+  <p class="subtitle">Grow Cookie the Hamster</p>
+
+  <div class="level-badge">
+    <span id="levelBadge">Lv. 1 — Baby</span>
+    <span class="growth-label" id="xpLabel">XP: 0 / 20</span>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat">
+      <div class="stat-icon">🌻</div>
+      <div class="stat-label">Food</div>
+      <div class="stat-bar-bg"><div class="stat-bar-fill food" id="foodBar" style="width:70%"></div></div>
+      <div class="stat-value" id="foodVal">70</div>
+    </div>
+    <div class="stat">
+      <div class="stat-icon">💧</div>
+      <div class="stat-label">Water</div>
+      <div class="stat-bar-bg"><div class="stat-bar-fill water" id="waterBar" style="width:75%"></div></div>
+      <div class="stat-value" id="waterVal">75</div>
+    </div>
+    <div class="stat">
+      <div class="stat-icon">⚡</div>
+      <div class="stat-label">Energy</div>
+      <div class="stat-bar-bg"><div class="stat-bar-fill energy" id="energyBar" style="width:80%"></div></div>
+      <div class="stat-value" id="energyVal">80</div>
+    </div>
+    <div class="stat">
+      <div class="stat-icon">💖</div>
+      <div class="stat-label">Happy</div>
+      <div class="stat-bar-bg"><div class="stat-bar-fill happiness" id="happyBar" style="width:60%"></div></div>
+      <div class="stat-value" id="happyVal">60</div>
+    </div>
+    <div class="stat">
+      <div class="stat-icon">📏</div>
+      <div class="stat-label">Size</div>
+      <div class="stat-bar-bg"><div class="stat-bar-fill size" id="sizeBar" style="width:10%"></div></div>
+      <div class="stat-value" id="sizeVal">Tiny</div>
+    </div>
+  </div>
+
+  <!-- Scene / Cage -->
+  <div class="scene" id="scene">
+    <div class="cage-bars"></div>
+    <div class="activity-msg" id="activityMsg"></div>
+
+    <!-- Sleep Hut -->
+    <div class="sleep-hut" id="sleepHut">
+      <div class="hut-roof"></div>
+      <div class="hut-base"></div>
+      <div class="hut-door"></div>
+      <div class="hut-zzz" id="hutZzz1">💤</div>
+      <div class="hut-zzz" id="hutZzz2">💤</div>
+    </div>
+
+    <!-- Tunnel -->
+    <div class="tunnel-entrance">
+      <div class="tunnel-arch"></div>
+    </div>
+    <div class="tunnel-tube-hint"></div>
+    <div class="tunnel-bump" id="tunnelBump"></div>
+
+    <!-- Food Bowl -->
+    <div class="food-bowl" id="foodBowl">
+      <div class="bowl-seeds" id="bowlSeeds"></div>
+      <div class="bowl-body"></div>
+    </div>
+
+    <!-- Chewtoy -->
+    <div class="chewtoy" id="chewtoyProp">
+      <div class="chewtoy-stick"></div>
+    </div>
+
+    <!-- Water Bottle -->
+    <div class="water-bottle" id="waterBottle">
+      <div class="bottle-bracket"></div>
+      <div class="bottle-body">
+        <div class="bottle-water" id="bottleWater"></div>
+      </div>
+      <div class="bottle-spout" id="bottleSpout"></div>
+    </div>
+
+    <!-- Wheel Assembly -->
+    <div class="wheel-assembly" id="wheelAssembly">
+      <div class="wheel-drum">
+        <div class="spoke"></div><div class="spoke"></div>
+        <div class="spoke"></div><div class="spoke"></div>
+        <div class="spoke"></div><div class="spoke"></div>
+        <div class="spoke"></div><div class="spoke"></div>
+      </div>
+      <div class="wheel-stand"></div>
+    </div>
+
+    <!-- Hamster -->
+    <div class="hamster-wrapper" id="hamsterWrapper">
+      <div class="hamster" id="hamster">
+        <div class="ear left"></div>
+        <div class="ear right"></div>
+        <div class="hamster-body">
+          <div class="face">
+            <div class="eyes">
+              <div class="eye" id="eyeL"></div>
+              <div class="eye" id="eyeR"></div>
+            </div>
+            <div class="nose"></div>
+            <div class="mouth" id="mouth"></div>
+          </div>
+          <div class="cheek left" id="cheekL"></div>
+          <div class="cheek right" id="cheekR"></div>
+        </div>
+        <div class="feet"><div class="foot"></div><div class="foot"></div></div>
+        <div class="tail"></div>
+      </div>
+      <div class="name-tag">クッキー</div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="action-btn btn-wheel" onclick="doAction('wheel')">
+      <span class="btn-icon">🎡</span> Wheel
+    </button>
+    <button class="action-btn btn-seed" onclick="doAction('eat')">
+      <span class="btn-icon">🌻</span> Seeds
+    </button>
+    <button class="action-btn btn-sleep" onclick="doAction('sleep')">
+      <span class="btn-icon">🏠</span> Sleep
+    </button>
+    <button class="action-btn btn-chew" onclick="doAction('chew')">
+      <span class="btn-icon">🪵</span> Chew
+    </button>
+    <button class="action-btn btn-tunnel" onclick="doAction('tunnel')">
+      <span class="btn-icon">🕳️</span> Tunnel
+    </button>
+    <button class="action-btn btn-water" onclick="doAction('water')">
+      <span class="btn-icon">💧</span> Water
+    </button>
+  </div>
+</div>
+
+<script>
+  // ===== Game State =====
+  const state = {
+    food: 70,
+    water: 75,
+    energy: 80,
+    happiness: 60,
+    xp: 0,
+    level: 1,
+    busy: false,
+  };
+
+  const levels = [
+    { name: 'Baby',       xpReq: 0,   scale: 1.0,  sizeLabel: 'Tiny' },
+    { name: 'Pup',        xpReq: 20,  scale: 1.08, sizeLabel: 'Small' },
+    { name: 'Junior',     xpReq: 50,  scale: 1.16, sizeLabel: 'Medium' },
+    { name: 'Teen',       xpReq: 100, scale: 1.25, sizeLabel: 'Chubby' },
+    { name: 'Adult',      xpReq: 180, scale: 1.35, sizeLabel: 'Big' },
+    { name: 'Chonker',    xpReq: 300, scale: 1.5,  sizeLabel: 'Chonk' },
+    { name: 'Mega Chonk', xpReq: 500, scale: 1.65, sizeLabel: 'MEGA' },
+    { name: 'Legend',     xpReq: 800, scale: 1.8,  sizeLabel: '伝説' },
+  ];
+
+  // ===== DOM Refs =====
+  const $ = id => document.getElementById(id);
+  const hamsterWrapper = $('hamsterWrapper');
+  const activityMsg    = $('activityMsg');
+  const wheelAssembly  = $('wheelAssembly');
+  const tunnelBump     = $('tunnelBump');
+  const scene          = $('scene');
+  const bottleSpout    = $('bottleSpout');
+
+  // ===== Helpers =====
+  function clamp(v, lo = 0, hi = 100) { return Math.max(lo, Math.min(hi, v)); }
+
+  function updateUI() {
+    const lvl = levels[state.level - 1];
+    const nextLvl = levels[state.level] || null;
+
+    state.food       = clamp(state.food);
+    state.water      = clamp(state.water);
+    state.energy     = clamp(state.energy);
+    state.happiness  = clamp(state.happiness);
+
+    $('foodBar').style.width   = state.food + '%';
+    $('waterBar').style.width  = state.water + '%';
+    $('energyBar').style.width = state.energy + '%';
+    $('happyBar').style.width  = state.happiness + '%';
+
+    $('foodVal').textContent   = Math.round(state.food);
+    $('waterVal').textContent  = Math.round(state.water);
+    $('energyVal').textContent = Math.round(state.energy);
+    $('happyVal').textContent  = Math.round(state.happiness);
+
+    // Low-stat warnings
+    ['foodBar','waterBar','energyBar','happyBar'].forEach(id => {
+      const el = $(id);
+      el.classList.toggle('low', parseFloat(el.style.width) <= 20);
+    });
+
+    // Size bar
+    const xpInLevel = state.xp - lvl.xpReq;
+    const xpForLevel = nextLvl ? (nextLvl.xpReq - lvl.xpReq) : 1;
+    const sizePct = nextLvl ? (xpInLevel / xpForLevel) * 100 : 100;
+    $('sizeBar').style.width = sizePct + '%';
+    $('sizeVal').textContent = lvl.sizeLabel;
+
+    $('levelBadge').textContent = `Lv. ${state.level} — ${lvl.name}`;
+    $('xpLabel').textContent = nextLvl
+      ? `XP: ${state.xp} / ${nextLvl.xpReq}`
+      : `XP: ${state.xp} (MAX)`;
+
+    // Scale hamster body based on level
+    $('hamster').style.transform = ($('hamster').style.transform || '')
+      .replace(/scale\([^)]*\)/, '') + ` scale(${lvl.scale})`;
+  }
+
+  function addXP(amount) {
+    state.xp += amount;
+    while (state.level < levels.length) {
+      const nextLvl = levels[state.level];
+      if (nextLvl && state.xp >= nextLvl.xpReq) {
+        state.level++;
+        showLevelUp(levels[state.level - 1]);
+      } else break;
+    }
+    updateUI();
+  }
+
+  function showLevelUp(lvl) {
+    $('levelUpText').textContent = `🎉 Level ${state.level}!`;
+    $('levelUpDesc').textContent = `クッキー evolved into ${lvl.name}!`;
+    $('levelUpOverlay').classList.add('show');
+    setTimeout(() => $('levelUpOverlay').classList.remove('show'), 2200);
+  }
+
+  // ===== Activity Helpers =====
+  function showMsg(text) {
+    activityMsg.textContent = text;
+    activityMsg.classList.add('show');
+  }
+  function hideMsg() { activityMsg.classList.remove('show'); }
+
+  function setEyes(mode) {
+    // mode: 'open', 'closed', 'happy'
+    const eyeL = $('eyeL'), eyeR = $('eyeR');
+    eyeL.classList.remove('closed', 'happy');
+    eyeR.classList.remove('closed', 'happy');
+    if (mode === 'closed') { eyeL.classList.add('closed'); eyeR.classList.add('closed'); }
+    if (mode === 'happy')  { eyeL.classList.add('happy'); eyeR.classList.add('happy'); }
+  }
+
+  function setCheeks(full) {
+    $('cheekL').classList.toggle('full', full);
+    $('cheekR').classList.toggle('full', full);
+  }
+
+  function spawnParticle(emoji, x, y) {
+    const el = document.createElement('div');
+    el.className = 'float-particle';
+    el.textContent = emoji;
+    el.style.left = (x || (35 + Math.random() * 35)) + '%';
+    el.style.top  = (y || (15 + Math.random() * 30)) + '%';
+    scene.appendChild(el);
+    setTimeout(() => el.remove(), 1500);
+  }
+
+  function spawnSeedNearBowl() {
+    const el = document.createElement('div');
+    el.className = 'seed-particle show';
+    el.textContent = '🌻';
+    el.style.left = (43 + Math.random() * 10) + '%';
+    el.style.top  = (48 + Math.random() * 8) + '%';
+    scene.appendChild(el);
+    setTimeout(() => el.remove(), 800);
+  }
+
+  function spawnWaterDrop() {
+    const el = document.createElement('div');
+    el.className = 'water-drop';
+    el.style.right = '20%';
+    el.style.top = '30%';
+    scene.appendChild(el);
+    setTimeout(() => el.remove(), 700);
+  }
+
+  function disableButtons(d) {
+    document.querySelectorAll('.action-btn').forEach(b => b.disabled = d);
+  }
+
+  function resetVisuals() {
+    hamsterWrapper.className = 'hamster-wrapper';
+    setEyes('open');
+    setCheeks(false);
+    $('mouth').classList.remove('eating', 'drinking');
+    wheelAssembly.classList.remove('spinning');
+    tunnelBump.classList.remove('traveling');
+    $('hutZzz1').classList.remove('active');
+    $('hutZzz2').classList.remove('active');
+  }
+
+  function finishAction() {
+    resetVisuals();
+    hideMsg();
+    state.busy = false;
+    disableButtons(false);
+    updateUI();
+  }
+
+  // ===== Actions =====
+  function doAction(type) {
+    if (state.busy) return;
+    state.busy = true;
+    disableButtons(true);
+    resetVisuals();
+
+    switch (type) {
+
+      // ===== WHEEL =====
+      case 'wheel': {
+        if (state.energy < 10) { cantDo("Too tired to run!"); return; }
+        const dur = 3500;
+        showMsg("🎡 クッキー is running on the wheel!");
+        hamsterWrapper.classList.add('at-wheel');
+        setTimeout(() => wheelAssembly.classList.add('spinning'), 300);
+        state.energy -= 15; state.happiness += 20; state.food -= 10; state.water -= 5;
+        const iv = setInterval(() => spawnParticle('⭐', 82 + Math.random()*10, 20+Math.random()*15), 400);
+        setTimeout(() => { clearInterval(iv); finishAction(); addXP(5); }, dur);
+        break;
+      }
+
+      // ===== EAT SEEDS =====
+      case 'eat': {
+        const dur = 3000;
+        showMsg("🌻 クッキー is eating from the bowl!");
+        // Walk to bowl
+        hamsterWrapper.classList.add('at-bowl');
+        // Start eating after arriving
+        setTimeout(() => {
+          hamsterWrapper.classList.add('eating-from-bowl');
+          $('mouth').classList.add('eating');
+          setCheeks(true);
+          setEyes('happy');
+        }, 500);
+        state.food += 25; state.energy += 5; state.happiness += 5;
+        const iv = setInterval(spawnSeedNearBowl, 350);
+        setTimeout(() => {
+          clearInterval(iv);
+          setCheeks(false);
+          finishAction();
+          addXP(3);
+        }, dur);
+        break;
+      }
+
+      // ===== SLEEP IN HUT =====
+      case 'sleep': {
+        if (state.energy >= 95) { cantDo("Not sleepy right now!"); return; }
+        const dur = 5000;
+        showMsg("🏠 クッキー is heading to bed...");
+        // Stage 1: Walk to hut
+        hamsterWrapper.classList.add('at-hut');
+
+        // Stage 2: Enter hut
+        setTimeout(() => {
+          showMsg("😴 クッキー is sleeping in the hut... Zzz");
+          hamsterWrapper.classList.remove('at-hut');
+          hamsterWrapper.classList.add('entering-hut');
+        }, 800);
+
+        // Stage 3: Hidden, Zzz from hut
+        setTimeout(() => {
+          hamsterWrapper.classList.remove('entering-hut');
+          hamsterWrapper.classList.add('in-hut');
+          $('hutZzz1').classList.add('active');
+          $('hutZzz2').classList.add('active');
+        }, 1400);
+
+        // Stage 4: Wake up and come out
+        setTimeout(() => {
+          showMsg("🏠 クッキー woke up refreshed!");
+          $('hutZzz1').classList.remove('active');
+          $('hutZzz2').classList.remove('active');
+          hamsterWrapper.classList.remove('in-hut');
+          hamsterWrapper.classList.add('at-hut');
+        }, dur - 800);
+
+        state.energy += 35; state.food -= 5; state.water -= 5; state.happiness += 5;
+        setTimeout(() => { finishAction(); addXP(2); }, dur);
+        break;
+      }
+
+      // ===== CHEW TOY =====
+      case 'chew': {
+        if (state.energy < 5) { cantDo("Too tired to chew!"); return; }
+        const dur = 3000;
+        showMsg("🪵 クッキー is gnawing the chewtoy!");
+        hamsterWrapper.classList.add('at-chewtoy');
+        setTimeout(() => {
+          hamsterWrapper.classList.add('chewing');
+          setEyes('happy');
+        }, 400);
+        state.happiness += 15; state.energy -= 5; state.food -= 3;
+        const iv = setInterval(() => spawnParticle('💖', 62 + Math.random()*8, 30+Math.random()*10), 500);
+        setTimeout(() => { clearInterval(iv); finishAction(); addXP(4); }, dur);
+        break;
+      }
+
+      // ===== TUNNEL =====
+      case 'tunnel': {
+        if (state.energy < 10) { cantDo("Too tired to explore!"); return; }
+        const dur = 5000;
+        showMsg("🕳️ クッキー is heading to the tunnel!");
+        state.happiness += 18; state.energy -= 12; state.food -= 8; state.water -= 3;
+
+        // Walk to entrance
+        setTimeout(() => hamsterWrapper.classList.add('at-tunnel'), 100);
+
+        // Enter
+        setTimeout(() => {
+          showMsg("🕳️ クッキー dived in!");
+          hamsterWrapper.classList.remove('at-tunnel');
+          hamsterWrapper.classList.add('entering-tunnel');
+        }, 900);
+
+        // Hidden, bump travels
+        setTimeout(() => {
+          hamsterWrapper.classList.remove('entering-tunnel');
+          hamsterWrapper.classList.add('in-tunnel');
+          showMsg("🕳️ *rumble rumble rumble*");
+          tunnelBump.classList.add('traveling');
+        }, 1500);
+
+        // Pop back out
+        setTimeout(() => {
+          tunnelBump.classList.remove('traveling');
+          showMsg("🕳️ クッキー popped back out!");
+          hamsterWrapper.classList.remove('in-tunnel');
+          hamsterWrapper.classList.add('exiting-tunnel');
+          spawnParticle('✨', 25, 35);
+          spawnParticle('✨', 30, 28);
+        }, 3800);
+
+        setTimeout(() => { finishAction(); addXP(6); }, dur);
+        break;
+      }
+
+      // ===== DRINK WATER =====
+      case 'water': {
+        const dur = 3000;
+        showMsg("💧 クッキー is going for a drink!");
+        hamsterWrapper.classList.add('at-water');
+
+        // Start drinking after arriving
+        setTimeout(() => {
+          showMsg("💧 クッキー is drinking... *lick lick*");
+          hamsterWrapper.classList.add('drinking');
+          $('mouth').classList.add('drinking');
+          setEyes('closed');
+        }, 500);
+
+        state.water += 30; state.energy += 5; state.happiness += 5;
+        const iv = setInterval(spawnWaterDrop, 400);
+        setTimeout(() => { clearInterval(iv); finishAction(); addXP(3); }, dur);
+        break;
+      }
+    }
+
+    updateUI();
+  }
+
+  function cantDo(msg) {
+    showMsg('❌ ' + msg);
+    spawnParticle('😩');
+    setTimeout(() => { hideMsg(); state.busy = false; disableButtons(false); }, 1200);
+  }
+
+  // ===== Passive Decay =====
+  setInterval(() => {
+    if (!state.busy) {
+      state.food       -= 1.0;
+      state.water      -= 0.8;
+      state.energy     -= 0.5;
+      state.happiness  -= 0.7;
+      updateUI();
+    }
+  }, 3000);
+
+  // ===== Idle Blink =====
+  setInterval(() => {
+    if (!state.busy) {
+      setEyes('closed');
+      setTimeout(() => setEyes('open'), 200);
+    }
+  }, 4000);
+
+  // ===== Click to Pat =====
+  $('hamster').addEventListener('click', () => {
+    if (state.busy) return;
+    state.happiness += 3;
+    spawnParticle('💕');
+    addXP(1);
+  });
+
+  // ===== Init =====
+  updateUI();
+</script>
+</body>
+</html>
