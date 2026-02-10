@@ -480,6 +480,12 @@
 
   function moveCookie() {
     const c = state.cookie;
+
+    // Continuously update direction from finger position while touching
+    if (touchActive) {
+      updateDirFromTouch(lastTouchX, lastTouchY);
+    }
+
     if (c.dir === DIR.NONE && c.nextDir === DIR.NONE) return;
 
     // Try to switch to desired direction
@@ -530,6 +536,8 @@
 
       // Continue or stop
       if (!canMove(c.x, c.y, c.dir)) {
+        c.dir = DIR.NONE;
+      } else if (!touchActive && lastInputSource === 'touch') {
         c.dir = DIR.NONE;
       }
     }
@@ -1169,6 +1177,37 @@
 
   // ===== Input =====
   let inputDir = DIR.NONE;
+  let touchActive = false;
+  let lastTouchX = 0, lastTouchY = 0;
+  let lastInputSource = 'keyboard'; // 'keyboard', 'dpad', 'touch'
+
+  function screenToTile(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: (clientX - rect.left) * scaleX / TILE,
+      y: (clientY - rect.top) * scaleY / TILE
+    };
+  }
+
+  function updateDirFromTouch(clientX, clientY) {
+    if (!state.running) return;
+    const finger = screenToTile(clientX, clientY);
+    const c = state.cookie;
+    const hx = c.x + (c.dir >= 0 ? DX[c.dir] * c.moveProgress : 0);
+    const hy = c.y + (c.dir >= 0 ? DY[c.dir] * c.moveProgress : 0);
+    const dx = finger.x - hx;
+    const dy = finger.y - hy;
+
+    if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      c.nextDir = dx > 0 ? DIR.RIGHT : DIR.LEFT;
+    } else {
+      c.nextDir = dy > 0 ? DIR.DOWN : DIR.UP;
+    }
+  }
 
   document.addEventListener('keydown', function(e) {
     if (e.key === 'ArrowUp' || e.key === 'w') { inputDir = DIR.UP; e.preventDefault(); }
@@ -1177,6 +1216,7 @@
     if (e.key === 'ArrowRight' || e.key === 'd') { inputDir = DIR.RIGHT; e.preventDefault(); }
 
     if (state.running && inputDir !== DIR.NONE) {
+      lastInputSource = 'keyboard';
       state.cookie.nextDir = inputDir;
     }
   });
@@ -1191,7 +1231,10 @@
       if (d === 'down') inputDir = DIR.DOWN;
       if (d === 'left') inputDir = DIR.LEFT;
       if (d === 'right') inputDir = DIR.RIGHT;
-      if (state.running) state.cookie.nextDir = inputDir;
+      if (state.running) {
+        lastInputSource = 'dpad';
+        state.cookie.nextDir = inputDir;
+      }
     }
     function handleRelease(e) {
       e.preventDefault();
@@ -1204,28 +1247,27 @@
     btn.addEventListener('mouseleave', handleRelease);
   });
 
-  // Swipe controls on canvas
-  let touchStartX = 0, touchStartY = 0;
+  // Touch controls on canvas - hamster follows finger position
   canvas.addEventListener('touchstart', function(e) {
+    touchActive = true;
+    lastInputSource = 'touch';
     const t = e.touches[0];
-    touchStartX = t.clientX;
-    touchStartY = t.clientY;
+    lastTouchX = t.clientX;
+    lastTouchY = t.clientY;
+    updateDirFromTouch(t.clientX, t.clientY);
+    e.preventDefault();
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', function(e) {
+    const t = e.touches[0];
+    lastTouchX = t.clientX;
+    lastTouchY = t.clientY;
+    updateDirFromTouch(t.clientX, t.clientY);
     e.preventDefault();
   }, { passive: false });
 
   canvas.addEventListener('touchend', function(e) {
-    const t = e.changedTouches[0];
-    const dx = t.clientX - touchStartX;
-    const dy = t.clientY - touchStartY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < 15) return;
-
-    if (Math.abs(dx) > Math.abs(dy)) {
-      inputDir = dx > 0 ? DIR.RIGHT : DIR.LEFT;
-    } else {
-      inputDir = dy > 0 ? DIR.DOWN : DIR.UP;
-    }
-    if (state.running) state.cookie.nextDir = inputDir;
+    touchActive = false;
     e.preventDefault();
   }, { passive: false });
 
